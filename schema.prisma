@@ -1,0 +1,177 @@
+model OrderItem {
+  id            String              @id @default(cuid())
+  tenantId      String
+  orderId       String
+  itemVariantId String
+  qty           Int
+  price         Float
+  notes         String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  order         Order               @relation(fields: [orderId], references: [id])
+  variant       ItemVariant         @relation(fields: [itemVariantId], references: [id])
+  modifiers     OrderItemModifier[]
+}
+
+model OrderItemModifier {
+  id          String    @id @default(cuid())
+  tenantId    String
+  orderItemId String
+  modifierId  String
+  qty         Int
+  price       Float
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id])
+  modifier    Modifier  @relation(fields: [modifierId], references: [id])
+}
+
+model Payment {
+  id        String   @id @default(cuid())
+  tenantId  String
+  orderId   String
+  method    String
+  amount    Float
+  ref       String?
+  createdAt DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id])
+}
+
+model KOT {
+  id       String    @id @default(cuid())
+  tenantId String
+  orderId  String
+  outletId String
+  status   String
+  sentAt   DateTime  @default(now())
+  readyAt  DateTime?
+  order    Order     @relation(fields: [orderId], references: [id])
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id            String   @id @default(cuid())
+  name          String
+  legal_name    String?
+  gstin         String?
+  billing_email String?
+  status        String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  outlets       Outlet[]
+  users         User[]
+}
+
+model Outlet {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  address   String?
+  timezone  String?
+  is_active Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  users     User[]
+}
+
+model User {
+  id            String   @id @default(cuid())
+  tenantId      String
+  outletId      String?
+  role          String
+  name          String
+  phone         String?
+  email         String?
+  password_hash String
+  is_active     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  outlet        Outlet?  @relation(fields: [outletId], references: [id])
+}
+
+model Order {
+  id         String      @id @default(cuid())
+  tenantId   String
+  outletId   String
+  tableId    String?
+  type       String
+  subtotal   Decimal
+  tax        Decimal
+  discount   Decimal
+  total      Decimal
+  status     String      @default("OPEN")
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  orderItems OrderItem[]
+  payments   Payment[]
+  kots       KOT[]
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  sort      Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  items     Item[]
+}
+
+model Item {
+  id         String        @id @default(cuid())
+  tenantId   String
+  categoryId String
+  name       String
+  sku        String?
+  taxRate    Float?
+  is_active  Boolean       @default(true)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  category   Category      @relation(fields: [categoryId], references: [id])
+  variants   ItemVariant[]
+}
+
+model ItemVariant {
+  id         String      @id @default(cuid())
+  tenantId   String
+  itemId     String
+  name       String
+  price      Float
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  item       Item        @relation(fields: [itemId], references: [id])
+  orderItems OrderItem[]
+}
+
+model ModifierGroup {
+  id        String     @id @default(cuid())
+  tenantId  String
+  name      String
+  min       Int?
+  max       Int?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  modifiers Modifier[]
+}
+
+model Modifier {
+  id                 String              @id @default(cuid())
+  tenantId           String
+  groupId            String
+  name               String
+  price              Float
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  group              ModifierGroup       @relation(fields: [groupId], references: [id])
+  orderItemModifiers OrderItemModifier[]
+}
